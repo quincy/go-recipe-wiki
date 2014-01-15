@@ -5,10 +5,14 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"regexp"
+
+	"github.com/russross/blackfriday"
 )
 
 type Page struct {
@@ -27,7 +31,9 @@ func loadPage(title string) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Page{Title: title, Body: body}, nil
+	html := blackfriday.MarkdownCommon(body)
+	fmt.Println(string(html)) // TODO remove
+	return &Page{Title: title, Body: html}, nil
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
@@ -61,6 +67,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	// TODO http://stackoverflow.com/questions/18589973/html-template-how-to-get-javascript-json-escaping-without-script-tag
 	err := templates.ExecuteTemplate(w, tmpl+".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -81,8 +88,15 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 func main() {
+	var server = "localhost:8080"
+
+	browser := exec.Command(`C:\Windows\System32\rundll32.exe`, "url.dll,FileProtocolHandler", "http://"+server+"/view/Home")
+	if err := browser.Start(); err != nil {
+		panic(err)
+	}
+
 	http.HandleFunc("/view/", makeHandler(viewHandler))
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(server, nil)
 }
