@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 
 	"github.com/russross/blackfriday"
 )
@@ -96,7 +97,17 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 func main() {
 	var server = "localhost:8080"
 
-	browser := exec.Command(`C:\Windows\System32\rundll32.exe`, "url.dll,FileProtocolHandler", "http://"+server+"/view/Home")
+	var browser *exec.Cmd
+	var url string = "http://" + server + "/view/Home"
+
+	switch runtime.GOOS {
+	case "windows":
+		browser = exec.Command(`C:\Windows\System32\rundll32.exe`, "url.dll,FileProtocolHandler", url)
+	case "darwin":
+		browser = exec.Command("open", url)
+	default:
+		browser = exec.Command("xdg-open", url)
+	}
 	if err := browser.Start(); err != nil {
 		panic(err)
 	}
