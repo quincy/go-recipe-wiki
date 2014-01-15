@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -20,7 +19,7 @@ import (
 
 type Page struct {
 	Title string
-	Body  []byte
+	Body  template.HTML
 }
 
 var pagesDir string = "pages"
@@ -35,7 +34,7 @@ func init() {
 
 func (p *Page) save() error {
 	filename := filepath.Join(pagesDir, p.Title+".txt")
-	return ioutil.WriteFile(filename, p.Body, 0600)
+	return ioutil.WriteFile(filename, []byte(p.Body), 0600)
 }
 
 func loadPage(title string) (*Page, error) {
@@ -44,13 +43,12 @@ func loadPage(title string) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	html := blackfriday.MarkdownCommon(body)
-	fmt.Println(string(html)) // TODO remove
-	return &Page{Title: title, Body: html}, nil
+	return &Page{Title: title, Body: template.HTML(body)}, nil
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 	p, err := loadPage(title)
+	p.Body = template.HTML(blackfriday.MarkdownCommon([]byte(p.Body)))
 	if err != nil {
 		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
 		return
@@ -68,7 +66,7 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
+	p := &Page{Title: title, Body: template.HTML(body)}
 	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -85,7 +83,6 @@ var templateFiles []string = []string{
 var templates = template.Must(template.ParseFiles(templateFiles...))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	// TODO http://stackoverflow.com/questions/18589973/html-template-how-to-get-javascript-json-escaping-without-script-tag
 	err := templates.ExecuteTemplate(w, tmpl+".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
