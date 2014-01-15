@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -22,13 +23,23 @@ type Page struct {
 	Body  []byte
 }
 
+var pagesDir string = "pages"
+
+func init() {
+	if _, err := os.Stat(pagesDir); os.IsNotExist(err) {
+		if err := os.Mkdir(pagesDir, 0700); err != nil {
+			panic(err)
+		}
+	}
+}
+
 func (p *Page) save() error {
-	filename := p.Title + ".txt"
+	filename := filepath.Join(pagesDir, p.Title+".txt")
 	return ioutil.WriteFile(filename, p.Body, 0600)
 }
 
 func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
+	filename := filepath.Join(pagesDir, title+".txt")
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
