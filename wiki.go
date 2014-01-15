@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 
 	"github.com/russross/blackfriday"
@@ -64,7 +65,12 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
-var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
+var templateDir string = "templates"
+var templateFiles []string = []string{
+	filepath.Join(templateDir, "edit.html"),
+	filepath.Join(templateDir, "view.html")}
+
+var templates = template.Must(template.ParseFiles(templateFiles...))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	// TODO http://stackoverflow.com/questions/18589973/html-template-how-to-get-javascript-json-escaping-without-script-tag
