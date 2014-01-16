@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
+	"strings"
 
 	"github.com/russross/blackfriday"
 )
@@ -21,6 +23,7 @@ import (
 type Page struct {
 	Title string
 	Body  template.HTML
+	Index []string
 }
 
 // save writes the page out to disk.
@@ -73,6 +76,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	updateIndex()
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
@@ -86,6 +90,8 @@ var templates = template.Must(template.ParseFiles(templateFiles...))
 
 // renderTemplate takes the renders the html for the given template.
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	p.Index = pages
+
 	err := templates.ExecuteTemplate(w, tmpl+".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -123,6 +129,46 @@ func init() {
 		if err := os.Mkdir(pagesDir, 0700); err != nil {
 			panic(err)
 		}
+	}
+}
+
+// get a list of all of the pages
+type Pages []string
+
+func (p Pages) Len() int {
+	return len(p)
+}
+
+func (p Pages) Less(i, j int) bool {
+	if p[i] == "Home" {
+		return true
+	} else if p[j] == "Home" {
+		return false
+	}
+	return p[i] < p[j]
+}
+
+func (p Pages) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+var pages Pages
+
+func init() {
+	updateIndex()
+	sort.Sort(pages)
+}
+
+func updateIndex() {
+	dirs, err := ioutil.ReadDir(pagesDir)
+	if err != nil {
+		panic(err)
+	}
+
+	pages = make([]string, len(dirs))
+
+	for k, v := range dirs {
+		pages[k] = strings.Replace(v.Name(), ".txt", "", -1)
 	}
 }
 
