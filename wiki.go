@@ -48,11 +48,13 @@ func loadPage(title string) (*Page, error) {
 
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 	p, err := loadPage(title)
-	p.Body = template.HTML(blackfriday.MarkdownCommon([]byte(p.Body)))
 	if err != nil {
 		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
 		return
 	}
+
+	markdownBody := blackfriday.MarkdownCommon([]byte(p.Body))
+	p.Body = template.HTML(markdownBody)
 	renderTemplate(w, "view", p)
 }
 
@@ -123,5 +125,6 @@ func main() {
 	http.HandleFunc("/view/", makeHandler(viewHandler))
 	http.HandleFunc("/edit/", makeHandler(editHandler))
 	http.HandleFunc("/save/", makeHandler(saveHandler))
+	http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("resources"))))
 	http.ListenAndServe(server, nil)
 }
