@@ -6,6 +6,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -22,15 +24,17 @@ import (
 
 // Page represents a single page in the wiki.
 type Page struct {
-	Title string
-	Body  template.HTML
-	Index []string
+	Title        string
+	Ingredients  template.HTML
+	Instructions template.HTML
+	Index        []string
 }
 
 // save writes the page out to disk.
 func (p *Page) save() error {
+	body := fmt.Sprintf("<!-- Ingredients -->\n%s\n<!-- Instructions -->\n%s", p.Ingredients, p.Instructions)
 	filename := filepath.Join(pagesDir, p.Title+".txt")
-	return ioutil.WriteFile(filename, []byte(p.Body), 0600)
+	return ioutil.WriteFile(filename, []byte(body), 0600)
 }
 
 // loadPage reads a page from disk.
@@ -40,7 +44,9 @@ func loadPage(title string) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Page{Title: title, Body: template.HTML(body)}, nil
+
+	ingredients, instructions := parseRecipe(body)
+	return &Page{Title: title, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}, nil
 }
 
 // viewHandler prepares the page to be rendered by passing it through the
@@ -52,9 +58,10 @@ func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 		return
 	}
 
-	markdownBody := blackfriday.MarkdownCommon([]byte(p.Body))
-	wikiMarkdown := convertWikiMarkup(markdownBody)
-	p.Body = template.HTML(wikiMarkdown)
+	p.Ingredients = template.HTML(blackfriday.MarkdownCommon([]byte(p.Ingredients)))
+	p.Instructions = template.HTML(blackfriday.MarkdownCommon([]byte(p.Instructions)))
+	p.Ingredients = template.HTML(convertWikiMarkup([]byte(p.Ingredients)))
+	p.Instructions = template.HTML(convertWikiMarkup([]byte(p.Instructions)))
 	renderTemplate(w, "view", p)
 }
 
@@ -70,8 +77,9 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 // saveHandler saves the changes and redirects back to the page's view.
 func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: template.HTML(body)}
+	ingredients := r.FormValue("ingredients")
+	instructions := r.FormValue("instructions")
+	p := &Page{Title: title, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}
 	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -160,6 +168,8 @@ func init() {
 	sort.Sort(pages)
 }
 
+// updateIndex reads the list of files in pages/ and creates a sorted index.
+// The Home page sorts ahead of all others.
 func updateIndex() {
 	dirs, err := ioutil.ReadDir(pagesDir)
 	if err != nil {
@@ -168,9 +178,40 @@ func updateIndex() {
 
 	pages = make([]string, len(dirs))
 
-	for k, v := range dirs {
-		pages[k] = strings.Replace(v.Name(), ".txt", "", -1)
+	for _, v := range dirs {
+		if !strings.HasPrefix(v.Name(), ".") {
+			pages = append(pages, strings.Replace(v.Name(), ".txt", "", -1))
+		}
 	}
+}
+
+// parseRecipe separates the loaded page into ingredients and instructions.
+func parseRecipe(content []byte) (ingredients, instructions template.HTML) {
+	lines := strings.Split(string(content), "\n")
+
+	inIngredients := false
+	inInstructions := false
+
+	for _, line := range lines {
+		switch line {
+		case "<!-- Ingredients -->":
+			inIngredients = true
+			inInstructions = false
+		case "<!-- Instructions -->":
+			inIngredients = false
+			inInstructions = true
+		default:
+			if inIngredients {
+				ingredients += template.HTML(line + "\n")
+			} else if inInstructions {
+				instructions += template.HTML(line + "\n")
+			} else {
+				panic(errors.New("Found bad line!  " + line))
+			}
+		}
+	}
+
+	return
 }
 
 func main() {

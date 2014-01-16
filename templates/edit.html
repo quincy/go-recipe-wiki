@@ -17,7 +17,12 @@ license that can be found in the LICENSE file.
 <h1>Editing {{.Title}}</h1>
 
 <form action="/save/{{.Title}}" method="POST">
-<div><textarea name="body" rows="20" cols="80">{{printf "%s" .Body}}</textarea></div>
+<div>
+    <h2>Ingredients</h2>
+    <textarea name="ingredients" rows="20" cols="80">{{printf "%s" .Ingredients}}</textarea>
+    <h2>Instructions</h2>
+    <textarea name="instructions" rows="20" cols="80">{{printf "%s" .Instructions}}</textarea>
+</div>
 <div><input type="submit" value="Save"></div>
 </form>
 
