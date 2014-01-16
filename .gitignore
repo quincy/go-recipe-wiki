@@ -23,6 +23,7 @@ _testmain.go
 
 # vim swap files
 .*.swp
+.*.swo
 
 # go-recipe-wiki specific stuff
 pages
