@@ -54,7 +54,8 @@ func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 	}
 
 	markdownBody := blackfriday.MarkdownCommon([]byte(p.Body))
-	p.Body = template.HTML(markdownBody)
+	wikiMarkdown := convertWikiMarkup(markdownBody)
+	p.Body = template.HTML(wikiMarkdown)
 	renderTemplate(w, "view", p)
 }
 
@@ -102,6 +103,14 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 		}
 		fn(w, r, m[2])
 	}
+}
+
+// a wikiLink looks like [[Words]]
+var wikiLink = regexp.MustCompile("\\[\\[(Home)\\]\\]")
+
+func convertWikiMarkup(text []byte) []byte {
+	var resultText = wikiLink.ReplaceAll(text, []byte("<a href=\"/view/$1\">$1</a>"))
+	return resultText
 }
 
 func main() {
