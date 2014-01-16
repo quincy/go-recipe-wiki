@@ -1,6 +1,25 @@
+<!DOCTYPE html>
+
+<!--
+Copyright 2010 The Go Authors.
+Copyright 2014 Quincy Bowers.  All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+
+-->
+
+<html>
+<head>
+  <title>{{.Title}}</title>
+  <link rel="stylesheet" type="text/css" href="/resources/default.css" />
+</head>
+<body>
 <h1>Editing {{.Title}}</h1>
 
 <form action="/save/{{.Title}}" method="POST">
 <div><textarea name="body" rows="20" cols="80">{{printf "%s" .Body}}</textarea></div>
 <div><input type="submit" value="Save"></div>
 </form>
+
+</body>
+</html>
