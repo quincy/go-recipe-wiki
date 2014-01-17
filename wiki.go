@@ -30,6 +30,12 @@ type Page struct {
 	Index        []string
 }
 
+type RootPage struct {
+	Title string
+	Body  template.HTML
+	Index []string
+}
+
 // save writes the page out to disk.
 func (p *Page) save() error {
 	body := fmt.Sprintf("<!-- Ingredients -->\n%s\n<!-- Instructions -->\n%s", p.Ingredients, p.Instructions)
@@ -49,9 +55,35 @@ func loadPage(title string) (*Page, error) {
 	return &Page{Title: title, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}, nil
 }
 
+func loadRoot(title string) (*RootPage, error) {
+	filename := filepath.Join(pagesDir, title+".txt")
+	body, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RootPage{Title: title, Body: template.HTML(body), Index: pages}, nil
+}
+
+// rootHandler prepares the home page.
+func rootHandler(w http.ResponseWriter, r *http.Request, title string) {
+	p, err := loadRoot(title)
+
+	err = templates.ExecuteTemplate(w, "root.html", p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 // viewHandler prepares the page to be rendered by passing it through the
 // markdown and wikiMarkup filters.
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
+	// Special case for the root page.
+	if title == rootTitle {
+		rootHandler(w, r, title)
+		return
+	}
+
 	p, err := loadPage(title)
 	if err != nil {
 		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
@@ -92,6 +124,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 // Parse the templates.
 var templateDir string = "templates"
 var templateFiles []string = []string{
+	filepath.Join(templateDir, "root.html"),
 	filepath.Join(templateDir, "edit.html"),
 	filepath.Join(templateDir, "view.html")}
 
@@ -215,12 +248,14 @@ func parseRecipe(content []byte) (ingredients, instructions template.HTML) {
 	return
 }
 
+var rootTitle string = "Home"
+
 func main() {
 	var server = "localhost:8080"
 
 	// open the default browser to the view/Home endpoint.
 	var browser *exec.Cmd
-	var url string = "http://" + server + "/view/Home"
+	var url string = "http://" + server + "/view/" + rootTitle
 
 	switch runtime.GOOS {
 	case "windows":

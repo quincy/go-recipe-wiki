@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+
+<!--
+Copyright 2014 Quincy Bowers.  All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+-->
+
+<html>
+<head>
+  <title>{{.Title}}</title>
+  <link rel="stylesheet" type="text/css" href="/resources/default.css" />
+</head>
+<body>
+<h1>{{.Title}}</h1>
+
+<!-- Wiki Index -->
+<div>{{range $k, $v := .Index}}<a href="/view/{{$v}}">{{$v}}</a><br>{{end}}</div>
+
+<!-- Page Body -->
+<div>{{.Body}}</div>
+
+<!-- <p>[<a href="/edit/{{.Title}}">edit</a>]</p> -->
+
+</body>
+</html>
+
