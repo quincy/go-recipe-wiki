@@ -111,7 +111,12 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	ingredients := r.FormValue("ingredients")
 	instructions := r.FormValue("instructions")
-	p := &Page{Title: title, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}
+	recipeTitle := r.FormValue("recipeTitle")
+
+	// TODO If the recipeTitle is different than the title we are renaming and
+	//      need to delete the old title.txt.
+
+	p := &Page{Title: recipeTitle, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}
 	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
