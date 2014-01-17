@@ -123,7 +123,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 		return
 	}
 	updateIndex()
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
+	http.Redirect(w, r, "/view/"+recipeTitle, http.StatusFound)
 }
 
 // Parse the templates.
