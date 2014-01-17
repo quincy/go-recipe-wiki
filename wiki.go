@@ -69,6 +69,9 @@ func loadRoot(title string) (*RootPage, error) {
 func rootHandler(w http.ResponseWriter, r *http.Request, title string) {
 	p, err := loadRoot(title)
 
+	p.Body = template.HTML(blackfriday.MarkdownCommon([]byte(p.Body)))
+	p.Body = template.HTML(convertWikiMarkup([]byte(p.Body)))
+
 	err = templates.ExecuteTemplate(w, "root.html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
