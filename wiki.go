@@ -210,7 +210,7 @@ func updateIndex() {
 		panic(err)
 	}
 
-	pages = make([]string, len(dirs))
+	pages = make([]string, 0)
 
 	for _, v := range dirs {
 		if !strings.HasPrefix(v.Name(), ".") {
