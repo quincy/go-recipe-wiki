@@ -116,15 +116,26 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	instructions := r.FormValue("instructions")
 	recipeTitle := r.FormValue("recipeTitle")
 
-	// TODO If the recipeTitle is different than the title we are renaming and
-	//      need to delete the old title.txt.
-
 	p := &Page{Title: recipeTitle, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}
 	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// If the recipeTitle is different than the title then we are renaming and
+	// should remove the old file.
+	if recipeTitle != title {
+		oldfile := filepath.Join(pagesDir, title+".txt")
+
+		// Only proceed with the rename if the old file exists.
+		if _, err := os.Stat(oldfile); err == nil {
+			if err := os.Remove(oldfile); err != nil {
+				panic(err)
+			}
+		}
+	}
+
 	updateIndex()
 	http.Redirect(w, r, "/view/"+recipeTitle, http.StatusFound)
 }
