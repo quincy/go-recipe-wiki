@@ -5,7 +5,6 @@ Copyright 2010 The Go Authors.
 Copyright 2014 Quincy Bowers.  All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.
-
 -->
 
 <html>
@@ -16,7 +15,7 @@ license that can be found in the LICENSE file.
 <body>
 <h1>Editing {{.Title}}</h1>
 
-<form action="/save/{{.Title}}" method="POST">
+<form action="/save/{{.Filename}}" method="POST">
 <div>
     <h2>Recipe Title</h2>
     <input type="text" name="recipeTitle" size="80" value="{{.Title}}">

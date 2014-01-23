@@ -25,44 +25,58 @@ import (
 // Page represents a single page in the wiki.
 type Page struct {
 	Title        string
+	Filename     string
 	Ingredients  template.HTML
 	Instructions template.HTML
-	Index        []string
+	Index        []template.HTML
 }
 
 type RootPage struct {
-	Title string
-	Body  template.HTML
-	Index []string
+	Title    string
+	Filename string
+	Body     template.HTML
+	Index    []template.HTML
 }
 
 // save writes the page out to disk.
 func (p *Page) save() error {
 	body := fmt.Sprintf("<!-- Ingredients -->\n%s\n<!-- Instructions -->\n%s", p.Ingredients, p.Instructions)
-	filename := filepath.Join(pagesDir, p.Title+".txt")
-	return ioutil.WriteFile(filename, []byte(body), 0600)
+	return ioutil.WriteFile(filepath.Join(pagesDir, p.Filename+".txt"), []byte(body), 0600)
 }
 
 // loadPage reads a page from disk.
-func loadPage(title string) (*Page, error) {
-	filename := filepath.Join(pagesDir, title+".txt")
+func loadPage(file string) (*Page, error) {
+	filename := filepath.Join(pagesDir, file+".txt")
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	ingredients, instructions := parseRecipe(body)
-	return &Page{Title: title, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}, nil
+
+	p := &Page{
+		Title:        convertFilenameToTitle(file),
+		Filename:     filepath.Base(file),
+		Ingredients:  template.HTML(ingredients),
+		Instructions: template.HTML(instructions)}
+
+	return p, nil
 }
 
-func loadRoot(title string) (*RootPage, error) {
-	filename := filepath.Join(pagesDir, title+".txt")
+func loadRoot(file string) (*RootPage, error) {
+	filename := filepath.Join(pagesDir, file+".txt")
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RootPage{Title: title, Body: template.HTML(body), Index: pages}, nil
+	p := &RootPage{
+		Title:    convertFilenameToTitle(file),
+		Filename: filepath.Base(file),
+		Body:     template.HTML(body),
+		Index:    pages}
+
+	return p, nil
 }
 
 // rootHandler prepares the home page.
@@ -105,7 +119,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 	p, err := loadPage(title)
 	if err != nil {
-		p = &Page{Title: title}
+		p = &Page{Title: title, Filename: title}
 	}
 	renderTemplate(w, "edit", p)
 }
@@ -116,16 +130,23 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	instructions := r.FormValue("instructions")
 	recipeTitle := r.FormValue("recipeTitle")
 
-	p := &Page{Title: recipeTitle, Ingredients: template.HTML(ingredients), Instructions: template.HTML(instructions)}
+	filename := convertTitleToFilename(recipeTitle)
+
+	p := &Page{
+		Title:        recipeTitle,
+		Filename:     filename,
+		Ingredients:  template.HTML(ingredients),
+		Instructions: template.HTML(instructions)}
+
 	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// If the recipeTitle is different than the title then we are renaming and
+	// If the filename is different than the title then we are renaming and
 	// should remove the old file.
-	if recipeTitle != title {
+	if filename != title {
 		oldfile := filepath.Join(pagesDir, title+".txt")
 
 		// Only proceed with the rename if the old file exists.
@@ -137,7 +158,15 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	}
 
 	updateIndex()
-	http.Redirect(w, r, "/view/"+recipeTitle, http.StatusFound)
+	http.Redirect(w, r, "/view/"+filename, http.StatusFound)
+}
+
+func convertTitleToFilename(title string) string {
+	return strings.Replace(title, " ", "-", -1)
+}
+
+func convertFilenameToTitle(filename string) string {
+	return strings.Replace(filename, "-", " ", -1)
 }
 
 // Parse the templates.
@@ -160,7 +189,7 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 }
 
 // Defines the set of valid URLs to expect.
-var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+var validPath = regexp.MustCompile("^/(edit|save|view)/([-a-zA-Z0-9]+)$")
 
 func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +203,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 // a wikiLink looks like [[Words]]
-var wikiLink = regexp.MustCompile("\\[\\[([a-zA-Z0-9]+)\\]\\]")
+var wikiLink = regexp.MustCompile("\\[\\[([-a-zA-Z0-9]+)\\]\\]")
 
 // convertWikiMarkup replaces wiki syntax with equivalent html.
 func convertWikiMarkup(text []byte) []byte {
@@ -194,7 +223,7 @@ func init() {
 }
 
 // get a list of all of the pages
-type Pages []string
+type Pages []template.HTML
 
 func (p Pages) Len() int {
 	return len(p)
@@ -218,7 +247,6 @@ var pages Pages
 // Get an initial list of all of the pages.
 func init() {
 	updateIndex()
-	sort.Sort(pages)
 }
 
 // updateIndex reads the list of files in pages/ and creates a sorted index.
@@ -229,13 +257,27 @@ func updateIndex() {
 		panic(err)
 	}
 
-	pages = make([]string, 0)
+	var urls Pages = make([]template.HTML, 0)
 
 	for _, v := range dirs {
 		if !strings.HasPrefix(v.Name(), ".") {
-			pages = append(pages, strings.Replace(v.Name(), ".txt", "", -1))
+			name := strings.Replace(v.Name(), ".txt", "", -1)
+			if name == rootTitle {
+				continue
+			}
+
+			title := convertFilenameToTitle(name)
+			url := fmt.Sprintf("<a href=\"/view/%s\">%s</a>", name, title)
+			urls = append(urls, template.HTML(url))
 		}
 	}
+	sort.Sort(urls)
+
+	home := template.HTML(fmt.Sprintf(`<a href="/view/%s">%s</a>`, rootTitle, rootTitle))
+
+	pages = make([]template.HTML, 1)
+	pages[0] = home
+	pages = append(pages, urls...)
 }
 
 // parseRecipe separates the loaded page into ingredients and instructions.
