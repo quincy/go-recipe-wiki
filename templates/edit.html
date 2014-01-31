@@ -24,7 +24,10 @@ license that can be found in the LICENSE file.
     <h2>Instructions</h2>
     <textarea name="instructions" rows="20" cols="80">{{printf "%s" .Instructions}}</textarea>
 </div>
-<div><input type="submit" value="Save"></div>
+<div>
+    <a href="/view/{{.Filename}}" id="cancelEdit">Cancel</a>
+    <input type="submit" value="Save">
+</div>
 </form>
 
 </body>
