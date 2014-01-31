@@ -203,7 +203,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 // a wikiLink looks like [[Words]]
-var wikiLink = regexp.MustCompile("\\[\\[([-a-zA-Z0-9]+)\\]\\]")
+var wikiLink = regexp.MustCompile("\\[\\[([-a-zA-Z0-9 ]+)\\]\\]")
 
 // convertWikiMarkup replaces wiki syntax with equivalent html.
 func convertWikiMarkup(text []byte) []byte {
