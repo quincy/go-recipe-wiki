@@ -207,7 +207,19 @@ var wikiLink = regexp.MustCompile("\\[\\[([-a-zA-Z0-9 ]+)\\]\\]")
 
 // convertWikiMarkup replaces wiki syntax with equivalent html.
 func convertWikiMarkup(text []byte) []byte {
-	var resultText = wikiLink.ReplaceAll(text, []byte("<a href=\"/view/$1\">$1</a>"))
+	var resultText []byte
+
+	matches := wikiLink.FindAllSubmatch(text, -1)
+	for _, v := range matches {
+		for _, submatch := range v[1:] {
+			targetText := regexp.MustCompile("\\[\\[(" + string(submatch) + ")\\]\\]")
+			space := regexp.MustCompile(" ")
+			linkText := space.ReplaceAll(submatch, []byte("-"))
+			replacementText := []byte("<a href=\"/view/" + string(linkText) + "\">" + string(submatch) + "</a>")
+
+			resultText = targetText.ReplaceAll(text, replacementText)
+		}
+	}
 	return resultText
 }
 
